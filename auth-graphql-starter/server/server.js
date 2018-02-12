@@ -1,9 +1,10 @@
 const express = require('express');
-const models = require('./models');
+const session = require('express-session');
 const expressGraphQL = require('express-graphql');
 const mongoose = require('mongoose');
-const session = require('express-session');
 const passport = require('passport');
+
+const models = require('./models');
 const passportConfig = require('./services/auth');
 const MongoStore = require('connect-mongo')(session);
 const schema = require('./schema/schema');
@@ -19,7 +20,7 @@ mongoose.Promise = global.Promise;
 
 // Connect to the mongoDB instance and log a message
 // on success or failure
-mongoose.connect(MONGO_URI);
+mongoose.connect(MONGO_URI, { useMongoClient: true });
 mongoose.connection
     .once('open', () => console.log('Connected to MongoLab instance.'))
     .on('error', error => console.log('Error connecting to MongoLab:', error));
@@ -58,6 +59,10 @@ app.use('/graphql', expressGraphQL({
 const webpackMiddleware = require('webpack-dev-middleware');
 const webpack = require('webpack');
 const webpackConfig = require('../webpack.config.js');
-app.use(webpackMiddleware(webpack(webpackConfig)));
+app.use(webpackMiddleware(webpack(webpackConfig), {
+  stats: {
+    colors: true
+  }
+}));
 
 module.exports = app;

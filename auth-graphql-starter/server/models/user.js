@@ -1,7 +1,9 @@
 const bcrypt = require('bcrypt-nodejs');
-const crypto = require('crypto');
 const mongoose = require('mongoose');
+const { promisify } = require('util');
 const Schema = mongoose.Schema;
+
+const SALT_ROUNDS = 10;
 
 // Every user has an email and password.  The password is not stored as
 // plain text - see the authentication helpers below.
@@ -15,17 +17,27 @@ const UserSchema = new Schema({
 // procedure that modifies the password - the plain text password cannot be
 // derived from the salted + hashed version. See 'comparePassword' to understand
 // how this is used.
+
 UserSchema.pre('save', function save(next) {
   const user = this;
   if (!user.isModified('password')) { return next(); }
-  bcrypt.genSalt(10, (err, salt) => {
-    if (err) { return next(err); }
-    bcrypt.hash(user.password, salt, null, (err, hash) => {
-      if (err) { return next(err); }
+
+  // bcrypt.genSalt(10, (err, salt) => {
+  //   if (err) { return next(err); }
+  //   bcrypt.hash(user.password, salt, null, (err, hash) => {
+  //     if (err) { return next(err); }
+  //     user.password = hash;
+  //     next();
+  //   });
+  // });
+
+  promisify(bcrypt.genSalt)(SALT_ROUNDS)
+    .then(salt => promisify(bcrypt.hash)(user.password, salt, null))
+    .then(hash => {
       user.password = hash;
       next();
-    });
-  });
+    })
+    .catch(err => next(err))
 });
 
 // We need to compare the plain text password (submitted whenever logging in)
@@ -34,9 +46,13 @@ UserSchema.pre('save', function save(next) {
 // that hashed password to the one stored in the DB.  Remember that hashing is
 // a one way process - the passwords are never compared in plain text form.
 UserSchema.methods.comparePassword = function comparePassword(candidatePassword, cb) {
-  bcrypt.compare(candidatePassword, this.password, (err, isMatch) => {
-    cb(err, isMatch);
-  });
+  // bcrypt.compare(candidatePassword, this.password, (err, isMatch) => {
+  //   cb(err, isMatch);
+  // });
+
+  promisify(bcrypt.compare)(candidatePassword, this.password)
+    .then(isMatch => cb(null, isMatch))
+    .catch(err => cb(err))
 };
 
 mongoose.model('user', UserSchema);

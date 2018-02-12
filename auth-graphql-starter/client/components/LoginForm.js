@@ -1,15 +1,16 @@
 import React, { Component } from 'react';
-import AuthForm from './AuthForm';
-import mutation from '../mutations/Login';
-import { graphql } from 'react-apollo';
-import query from '../queries/CurrentUser';
 import { hashHistory } from 'react-router';
+import { graphql, compose } from 'react-apollo';
+
+import AuthForm from './AuthForm';
+import query from '../queries/CurrentUser';
+import mutation from '../mutations/Login';
 
 class LoginForm extends Component {
   constructor(props) {
     super(props);
-
     this.state = { errors: [] };
+    this.onSubmit = this.onSubmit.bind(this);
   }
 
   componentWillUpdate(nextProps) {
@@ -23,13 +24,11 @@ class LoginForm extends Component {
   }
 
   onSubmit({ email, password }) {
-    this.props.mutate({
-      variables: { email, password },
-      refetchQueries: [{ query }]
-    }).catch(res => {
-      const errors = res.graphQLErrors.map(error => error.message);
-      this.setState({ errors });
-    });
+    this.props.onLogin(email, password)
+      .catch(res => {
+        const errors = res.graphQLErrors.map(error => error.message);
+        this.setState({ errors });
+      });
   }
 
   render() {
@@ -38,13 +37,25 @@ class LoginForm extends Component {
         <h3>Login</h3>
         <AuthForm
           errors={this.state.errors}
-          onSubmit={this.onSubmit.bind(this)}
+          onSubmit={this.onSubmit}
         />
       </div>
     );
   }
 }
 
-export default graphql(query)(
-  graphql(mutation)(LoginForm)
-);
+const mutationConfig = {
+  props: (props) => ({
+    onLogin(email, password) {
+      return props.mutate({
+        variables: { email, password },
+        refetchQueries: [{ query }]
+      });
+    }
+  })
+};
+
+export default compose(
+  graphql(query),
+  graphql(mutation, mutationConfig)
+)(LoginForm)

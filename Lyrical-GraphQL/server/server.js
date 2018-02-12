@@ -1,8 +1,9 @@
 const express = require('express');
-const models = require('./models');
 const expressGraphQL = require('express-graphql');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+
+const models = require('./models');
 const schema = require('./schema/schema');
 
 const app = express();
@@ -14,7 +15,9 @@ if (!MONGO_URI) {
 }
 
 mongoose.Promise = global.Promise;
-mongoose.connect(MONGO_URI);
+mongoose.connect(MONGO_URI, {
+  useMongoClient: true
+});
 mongoose.connection
     .once('open', () => console.log('Connected to MongoLab instance.'))
     .on('error', error => console.log('Error connecting to MongoLab:', error));
@@ -28,6 +31,8 @@ app.use('/graphql', expressGraphQL({
 const webpackMiddleware = require('webpack-dev-middleware');
 const webpack = require('webpack');
 const webpackConfig = require('../webpack.config.js');
-app.use(webpackMiddleware(webpack(webpackConfig)));
+app.use(webpackMiddleware(webpack(webpackConfig), {
+  stats: { colors: true }
+}));
 
 module.exports = app;
